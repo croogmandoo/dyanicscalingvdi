@@ -1,0 +1,16 @@
+# Local secrets / runtime config — never commit
+.env
+*.secret
+secrets/
+
+# Generated artifacts
+out/
+*.token
+*.log
+
+# SSH known hosts scratch
+.ssh-known-hosts
+
+# Editor noise
+.DS_Store
+*.swp

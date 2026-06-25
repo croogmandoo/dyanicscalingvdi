@@ -78,15 +78,21 @@ to manage VMs in that pool and nothing else — not full root on the node.
 ## Windows server pool
 
 The most common Horizon workload is Windows desktops. Kasm autoscales Windows
-servers the same way, but the template is built by hand (no cloud-init heredoc):
+servers the same way; the template build is semi-automated by
+`scripts/proxmox/22-build-windows-template.sh` (Windows can't be cloud-init'd, so
+it uses an `autounattend.xml` answer file + Cloudbase-Init instead). The flow:
 
-1. Create a Windows VM, install `qemu-guest-agent` (from the virtio-win ISO) and
-   the Cloudbase-Init agent, enable RDP, and `sysprep /generalize` it.
-2. `qm template` it into the `kasm-autoscale` pool.
-3. In Kasm, create a **Server-pool autoscale config** pointing at that template,
+1. `22-build-windows-template.sh` — unattended Windows install, then `bootstrap.ps1`
+   installs `qemu-guest-agent` (from the virtio-win ISO) + Cloudbase-Init and
+   enables RDP.
+2. `sysprep /generalize /shutdown` from inside the VM (the one manual step).
+3. `22-build-windows-template.sh --finalize` — detaches ISOs, adds a cloud-init
+   drive, and `qm template`s it into the `kasm-autoscale` pool.
+4. In Kasm, create a **Server-pool autoscale config** pointing at that template,
    with an RDP connection (port 3389) and credentials.
 
-The Proxmox-side prep (`10-proxmox-setup.sh`) is identical.
+The Proxmox-side prep (`10-proxmox-setup.sh`) is identical. Full walkthrough:
+[`WINDOWS-DESKTOP-POOL.md`](WINDOWS-DESKTOP-POOL.md).
 
 ## Production hardening (beyond this test rig)
 

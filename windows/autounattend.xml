@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  autounattend.xml — unattended Windows Setup answer file for the Kasm
+  desktop-pool template. Placeholders in @@DOUBLE_AT@@ form are substituted by
+  scripts/proxmox/22-build-windows-template.sh from your .env before the file is
+  written to the answer ISO. Windows Setup auto-reads autounattend.xml from the
+  root of attached removable/CD media.
+
+  This targets UEFI x64 (Proxmox OVMF + q35). It wipes disk 0, creates the
+  standard UEFI layout, creates a local admin, skips OOBE, enables RDP, and runs
+  bootstrap.ps1 (also on the answer ISO) at first logon.
+
+  NOTE: the admin password is stored here in PLAINTEXT. Use a throwaway value and
+  rotate it after the image is built (see docs/WINDOWS-DESKTOP-POOL.md).
+-->
+<unattend xmlns="urn:schemas-microsoft-com:unattend"
+          xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+  <settings pass="windowsPE">
+    <component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <SetupUILanguage><UILanguage>@@LOCALE@@</UILanguage></SetupUILanguage>
+      <InputLocale>@@LOCALE@@</InputLocale>
+      <SystemLocale>@@LOCALE@@</SystemLocale>
+      <UILanguage>@@LOCALE@@</UILanguage>
+      <UserLocale>@@LOCALE@@</UserLocale>
+    </component>
+
+    <component name="Microsoft-Windows-Setup" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <!-- Load virtio SCSI/NET drivers from the attached virtio-win ISO so
+           Setup can see the virtio-scsi disk and NIC. Drive letter varies; the
+           path search covers common letters. -->
+      <DriverPaths>
+        <PathAndCredentials wcm:action="add" wcm:keyValue="1" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+          <Path>D:\vioscsi\@@VIRTIO_DIR@@\amd64</Path>
+        </PathAndCredentials>
+        <PathAndCredentials wcm:action="add" wcm:keyValue="2" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+          <Path>E:\vioscsi\@@VIRTIO_DIR@@\amd64</Path>
+        </PathAndCredentials>
+        <PathAndCredentials wcm:action="add" wcm:keyValue="3" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+          <Path>D:\NetKVM\@@VIRTIO_DIR@@\amd64</Path>
+        </PathAndCredentials>
+        <PathAndCredentials wcm:action="add" wcm:keyValue="4" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+          <Path>E:\NetKVM\@@VIRTIO_DIR@@\amd64</Path>
+        </PathAndCredentials>
+      </DriverPaths>
+      <UserData>
+        <AcceptEula>true</AcceptEula>
+        <!-- ProductKey omitted when blank; substitution leaves the block empty. -->
+        @@PRODUCT_KEY_BLOCK@@
+      </UserData>
+      <DiskConfiguration>
+        <Disk wcm:action="add" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+          <DiskID>0</DiskID>
+          <WillWipeDisk>true</WillWipeDisk>
+          <CreatePartitions>
+            <CreatePartition wcm:action="add"><Order>1</Order><Type>EFI</Type><Size>260</Size></CreatePartition>
+            <CreatePartition wcm:action="add"><Order>2</Order><Type>MSR</Type><Size>16</Size></CreatePartition>
+            <CreatePartition wcm:action="add"><Order>3</Order><Type>Primary</Type><Extend>true</Extend></CreatePartition>
+          </CreatePartitions>
+          <ModifyPartitions>
+            <ModifyPartition wcm:action="add"><Order>1</Order><PartitionID>1</PartitionID><Format>FAT32</Format><Label>System</Label></ModifyPartition>
+            <ModifyPartition wcm:action="add"><Order>2</Order><PartitionID>2</PartitionID></ModifyPartition>
+            <ModifyPartition wcm:action="add"><Order>3</Order><PartitionID>3</PartitionID><Format>NTFS</Format><Label>Windows</Label><Letter>C</Letter></ModifyPartition>
+          </ModifyPartitions>
+        </Disk>
+      </DiskConfiguration>
+      <ImageInstall>
+        <OSImage>
+          <InstallTo><DiskID>0</DiskID><PartitionID>3</PartitionID></InstallTo>
+          <!-- Match the edition you license. "Windows 11 Pro" is common for VDI. -->
+          <InstallFrom><MetaData wcm:action="add"><Key>/IMAGE/NAME</Key><Value>@@WIN_EDITION@@</Value></MetaData></InstallFrom>
+        </OSImage>
+      </ImageInstall>
+    </component>
+  </settings>
+
+  <settings pass="specialize">
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <ComputerName>*</ComputerName>
+      <!-- Enable Remote Desktop + firewall rule so Kasm can broker over RDP. -->
+      <RegisteredOwner>Kasm VDI</RegisteredOwner>
+    </component>
+    <component name="Microsoft-Windows-TerminalServices-LocalSessionManager" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <fDenyTSConnections>false</fDenyTSConnections>
+    </component>
+    <component name="Networking-MPSSVC-Svc" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <FirewallGroups>
+        <FirewallGroup wcm:action="add" wcm:keyValue="RDP" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+          <Active>true</Active><Group>Remote Desktop</Group><Profile>all</Profile>
+        </FirewallGroup>
+      </FirewallGroups>
+    </component>
+  </settings>
+
+  <settings pass="oobeSystem">
+    <component name="Microsoft-Windows-International-Core" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <InputLocale>@@LOCALE@@</InputLocale>
+      <SystemLocale>@@LOCALE@@</SystemLocale>
+      <UILanguage>@@LOCALE@@</UILanguage>
+      <UserLocale>@@LOCALE@@</UserLocale>
+    </component>
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <TimeZone>@@TIMEZONE@@</TimeZone>
+      <OOBE>
+        <HideEULAPage>true</HideEULAPage>
+        <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
+        <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+        <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+        <ProtectYourPC>3</ProtectYourPC>
+        <SkipMachineOOBE>true</SkipMachineOOBE>
+        <SkipUserOOBE>true</SkipUserOOBE>
+      </OOBE>
+      <UserAccounts>
+        <LocalAccounts>
+          <LocalAccount wcm:action="add" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+            <Name>@@ADMIN_USER@@</Name>
+            <Group>Administrators</Group>
+            <Password><Value>@@ADMIN_PASSWORD@@</Value><PlainText>true</PlainText></Password>
+          </LocalAccount>
+        </LocalAccounts>
+      </UserAccounts>
+      <!-- Auto-logon ONCE to run bootstrap.ps1, which disables further autologon. -->
+      <AutoLogon>
+        <Enabled>true</Enabled>
+        <Username>@@ADMIN_USER@@</Username>
+        <LogonCount>1</LogonCount>
+        <Password><Value>@@ADMIN_PASSWORD@@</Value><PlainText>true</PlainText></Password>
+      </AutoLogon>
+      <FirstLogonCommands>
+        <SynchronousCommand wcm:action="add">
+          <Order>1</Order>
+          <Description>Run Kasm template bootstrap</Description>
+          <!-- Search all volumes for bootstrap.ps1 (answer-ISO letter varies). -->
+          <CommandLine>powershell -ExecutionPolicy Bypass -NoProfile -Command "foreach($d in (Get-PSDrive -PSProvider FileSystem)){$p=Join-Path $d.Root 'bootstrap.ps1'; if(Test-Path $p){ &amp; $p; break }}"</CommandLine>
+        </SynchronousCommand>
+      </FirstLogonCommands>
+    </component>
+  </settings>
+</unattend>

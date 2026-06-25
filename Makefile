@@ -19,8 +19,14 @@ proxmox-setup: ## Create Proxmox role, user, pool, API token
 agent-template: ## Build the Docker-agent VM template
 	./scripts/proxmox/20-build-agent-template.sh
 
-server-template: ## Build the full-desktop (Horizon-style) VM template
+server-template: ## Build the full-desktop Linux (Horizon-style) VM template
 	./scripts/proxmox/21-build-server-template.sh
+
+windows-template: ## Build the Windows desktop-pool template (then sysprep + --finalize)
+	./scripts/proxmox/22-build-windows-template.sh
+
+windows-finalize: ## Seal a sysprepped Windows VM into a template
+	./scripts/proxmox/22-build-windows-template.sh --finalize
 
 install-kasm: ## Install Kasm control plane (run ON the Kasm host)
 	./scripts/kasm/30-install-kasm.sh

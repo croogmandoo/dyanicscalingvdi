@@ -21,7 +21,8 @@ per-seat licensing.
 | `scripts/00-preflight.sh` | Validates your workstation, `.env`, SSH + Proxmox reachability. Read-only. |
 | `scripts/proxmox/10-proxmox-setup.sh` | Creates the role, API user, resource pool, ACLs and API **token** on the node. |
 | `scripts/proxmox/20-build-agent-template.sh` | Builds the **Docker-agent** VM template (dense, containerized workspaces). |
-| `scripts/proxmox/21-build-server-template.sh` | Builds a **full-desktop** VM template (Horizon-style, one VM per user, over RDP). |
+| `scripts/proxmox/21-build-server-template.sh` | Builds a **full-desktop Linux** VM template (Horizon-style, one VM per user, over RDP). |
+| `scripts/proxmox/22-build-windows-template.sh` | Builds a **Windows desktop-pool** template (the closest Horizon analog). See [`docs/WINDOWS-DESKTOP-POOL.md`](docs/WINDOWS-DESKTOP-POOL.md). |
 | `scripts/kasm/30-install-kasm.sh` | Installs the Kasm control plane (run on the Kasm host). |
 | `scripts/kasm/40-configure-autoscale.sh` | Validates the Proxmox token/pool/template and prints the exact Kasm config. |
 | `scripts/test/50-scale-test.sh` | Drives demand and watches VMs appear/drain on Proxmox. |
